@@ -1,0 +1,17 @@
+node_modules
+dist
+
+.DS_Store
+
+# Environment — never commit
+.env
+.env.local
+.env.production
+
+# TS build info
+*.tsbuildinfo
+
+# Editor / OS
+.idea
+.vscode/*
+!.vscode/extensions.json
