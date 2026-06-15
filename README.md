@@ -15,11 +15,27 @@ cp .env.example .env   # leave VITE_API_URL empty for local dev
 
 ## Develop
 ```bash
-npm run dev            # http://localhost:5173
+npm run dev            # http://localhost:5173 → local Spring backend
+npm run dev:cloud      # http://localhost:5173 → hosted Cloud Run backend
 ```
-With `VITE_API_URL` unset, `/api/*` requests are proxied to the local backend
-(default `http://localhost:5001`; override with `VITE_DEV_API_PROXY`). Start the
-Spring backend separately on that port.
+
+Two dev targets, switched by Vite mode — no file edits between runs:
+
+- `npm run dev` — `VITE_API_URL` unset → relative `/api/*` proxied to the local
+  backend (default `http://localhost:5001`; override with `VITE_DEV_API_PROXY`).
+  Same-origin, no CORS. Start the Spring backend separately on that port.
+- `npm run dev:cloud` — runs with `--mode cloud`, loading `.env.cloud` which sets
+  `VITE_API_URL` to the hosted Cloud Run backend
+  (`https://gth-api-586609281886.us-central1.run.app`). Calls go direct
+  (cross-origin), so that backend must allow CORS for the `Authorization` header
+  and the SSE search routes.
+
+`.env.cloud` (committed — holds only the public backend URL, no secrets):
+```
+VITE_API_URL=https://gth-api-586609281886.us-central1.run.app
+```
+Keep `VITE_API_URL` **unset** in `.env.local` — `.env.local` loads in every mode
+and would override `.env.cloud`.
 
 ## Backend connection model
 - **Local dev:** `VITE_API_URL` unset → relative `/api` paths → Vite dev proxy.
