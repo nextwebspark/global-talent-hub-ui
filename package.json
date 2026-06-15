@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "vite dev --port 5173",
+    "dev:cloud": "vite dev --port 5173 --mode cloud",
     "build": "vite build",
     "preview": "vite preview --port 5173",
     "check": "tsc",
