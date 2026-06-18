@@ -39,7 +39,7 @@ export function SearchableSelectCell({ value, options, onSave, placeholder, grou
     <>
       <span
         ref={triggerRef}
-        className="truncate block cursor-text hover:bg-muted/40 rounded px-0.5 -mx-0.5"
+        className="truncate block cursor-pointer hover:bg-muted/40 rounded px-0.5 -mx-0.5"
         title={value || undefined}
         onMouseDown={e => e.stopPropagation()}
         onClick={(e) => { e.stopPropagation(); setOpen(v => !v); }}

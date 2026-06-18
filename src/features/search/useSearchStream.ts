@@ -29,7 +29,7 @@ export interface UseSearchStreamReturn {
   searchQueryId: number | null;
   sessionId: string | null;
   isStreaming: boolean;
-  startSearch: (query: string, sessionId: string) => void;
+  startSearch: (query: string, sessionId: string, projectName?: string) => void;
   stopSearch: () => void;
   acceptCompany: (id: number) => void;
   rejectCompany: (id: number) => void;
@@ -42,6 +42,8 @@ export function useSearchStream(_sessionId?: string): UseSearchStreamReturn {
   const queryClient = useQueryClient();
   const esRef = useRef<EventSource | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const pendingQueryRef = useRef<string | null>(null);
+  const rawQueryRef = useRef<string | null>(null);
 
   const {
     searchPhase: phase,
@@ -67,6 +69,7 @@ export function useSearchStream(_sessionId?: string): UseSearchStreamReturn {
     setIsSearchRefining,
     resetSearchSession,
     clearPendingCompanyNames,
+    setProject,
   } = store;
 
   // Apply one parsed SSE event to the store. Shared by startSearch (EventSource)
@@ -76,6 +79,24 @@ export function useSearchStream(_sessionId?: string): UseSearchStreamReturn {
 
     if (type === 'search_created' && data.searchQueryId) {
       setSearchQueryId(data.searchQueryId);
+      const projectName = pendingQueryRef.current || data.query;
+      if (projectName) {
+        setProject({
+          id: String(data.searchQueryId),
+          name: projectName,
+          search_string: projectName,
+          created_at: new Date(),
+          status: 'draft',
+        });
+      }
+      const rawQuery = rawQueryRef.current;
+      if (projectName && rawQuery && projectName !== rawQuery) {
+        fetch(`/api/search/${data.searchQueryId}/name`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: projectName }),
+        }).catch(() => {});
+      }
       // New draft search-query row exists server-side; refresh the project lists
       // (popup, recents, Projects screen) so it shows without a browser refresh.
       queryClient.invalidateQueries({ queryKey: ['search-history'] });
@@ -103,12 +124,14 @@ export function useSearchStream(_sessionId?: string): UseSearchStreamReturn {
     if (type === 'error') {
       setIsSearchStreaming(false);
     }
-  }, [addSearchActivity, setSearchQueryId, setSearchIntent, addPendingCompanyName, addSearchCompany, addExecutiveToCompany, clearPendingCompanyNames, setIsSearchStreaming, setSearchPhase, queryClient]);
+  }, [addSearchActivity, setSearchQueryId, setSearchIntent, addPendingCompanyName, addSearchCompany, addExecutiveToCompany, clearPendingCompanyNames, setIsSearchStreaming, setSearchPhase, setProject, queryClient]);
 
-  const startSearch = useCallback(async (query: string, sessionId: string) => {
+  const startSearch = useCallback(async (query: string, sessionId: string, projectName?: string) => {
     if (esRef.current) { esRef.current.close(); esRef.current = null; }
 
     resetSearchSession();
+    rawQueryRef.current = query;
+    pendingQueryRef.current = projectName || query;
     setSearchSessionId(sessionId);
     setSearchPhase('streaming');
     setIsSearchStreaming(true);

@@ -1,5 +1,7 @@
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { existingNamesFromHistory, formatProjectName } from '@/lib/projectName';
+import type { SearchHistoryItem } from '@/lib/api';
 import { isAcceptedBriefFile, type BriefUploadHook } from './useBriefUpload';
 
 export type BriefModeHook = ReturnType<typeof useBriefMode>;
@@ -10,10 +12,12 @@ export function useBriefMode({
   upload,
   sessionId,
   startSearch,
+  projectHistory,
 }: {
   upload: BriefUploadHook;
   sessionId: string;
-  startSearch: (query: string, sessionId: string) => void;
+  startSearch: (query: string, sessionId: string, projectName?: string) => void;
+  projectHistory?: SearchHistoryItem[];
 }) {
   const [briefText, setBriefText] = useState('');
   const [isBriefDragOver, setIsBriefDragOver] = useState(false);
@@ -47,8 +51,10 @@ export function useBriefMode({
       const blob = new File([briefText.trim()], 'pasted-brief.txt', { type: 'text/plain' });
       await upload.uploadFile(blob);
     }
-    const query = briefText.trim() || `Brief: ${upload.fileName}`;
-    startSearch(query, sessionId);
+    const baseName = briefText.trim() || upload.fileName || 'Untitled brief';
+    const searchQuery = briefText.trim() || `Brief: ${upload.fileName}`;
+    const projectName = formatProjectName(baseName, 'brief', existingNamesFromHistory(projectHistory));
+    startSearch(searchQuery, sessionId, projectName);
   };
 
   return {
