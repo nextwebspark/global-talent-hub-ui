@@ -59,10 +59,11 @@ export default function UniversePage() {
     if (!searchSessionId) throw new Error('Missing session — cannot save project');
     const draftId = searchQueryId ?? routeUniverseId;
     if (Number.isNaN(draftId)) throw new Error('Missing project — cannot save');
+    const savedIds = companiesToSave.map(c => c.id);
     const res = await fetch('/api/search/add-to-project', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ companyIds: companiesToSave.map(c => c.id), sessionId: searchSessionId, searchQueryId: draftId }),
+      body: JSON.stringify({ companyIds: savedIds, sessionId: searchSessionId, searchQueryId: draftId }),
     });
     if (!res.ok) throw new Error('Failed to save project');
     const data = await res.json();
@@ -71,7 +72,12 @@ export default function UniversePage() {
     const fullResults = await fetch(`/api/search-history/${data.searchQueryId}/load`);
     if (fullResults.ok) {
       const loaded = await fullResults.json();
-      loadFromAPI(loaded.results || [], loaded.satelliteHierarchies || {}, loaded.tableConfig || null, loaded.mapPositions || {});
+      const savedIdSet = new Set(savedIds);
+      const results = (loaded.results || []).filter((r: { company?: { id?: number }; id?: number }) => {
+        const id = Number(r.company?.id ?? r.id);
+        return savedIdSet.has(id);
+      });
+      loadFromAPI(results, loaded.satelliteHierarchies || {}, loaded.tableConfig || null, loaded.mapPositions || {});
     } else {
       loadFromAPI([], {}, null, {});
     }
@@ -80,8 +86,10 @@ export default function UniversePage() {
     return data;
   };
 
+  const acceptedCompanies = () => useAppStore.getState().searchCompanies.filter(c => c.accepted);
+
   const handleSaveProject = async () => {
-    const accepted = companies.filter(c => c.accepted);
+    const accepted = acceptedCompanies();
     if (accepted.length === 0) { toast.error('Select at least one company to save'); return; }
     setIsSavingProject(true);
     try {
@@ -95,11 +103,11 @@ export default function UniversePage() {
   };
 
   const handleGoToDashboard = async () => {
-    const nonRejected = companies.filter(c => !c.rejected);
-    if (nonRejected.length === 0) { reset(); setLocation('/'); return; }
+    const accepted = acceptedCompanies();
+    if (accepted.length === 0) { reset(); setLocation('/'); return; }
     setIsSavingProject(true);
     try {
-      const data = await saveCompaniesToProject(nonRejected);
+      const data = await saveCompaniesToProject(accepted);
       setLocation(dashboardPath(String(data.searchQueryId), 'map'));
     } catch (err: any) {
       toast.error(err.message || 'Failed to navigate');
