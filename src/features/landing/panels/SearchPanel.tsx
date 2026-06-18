@@ -73,7 +73,7 @@ export function SearchPanel({
               onClick={onSubmit}
               disabled={!input.trim() || isSearching}
               data-testid="button-submit-search"
-              className="gap-2 cursor-pointer"
+              className="gap-2"
             >
               {isSearching ? (
                 <>
