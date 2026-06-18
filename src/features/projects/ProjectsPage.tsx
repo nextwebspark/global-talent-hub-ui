@@ -11,6 +11,7 @@ import { useLoadProject, useResumeDraft } from '@/lib/useLoadProject';
 import Sidebar from '@/components/layout/Sidebar';
 import ProjectsPanel from '@/features/projects/ProjectsPanel';
 import ProjectStatusChip from '@/features/projects/ProjectStatusChip';
+import { dashboardPath, universePath } from '@/lib/dashboardView';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -71,11 +72,11 @@ export default function ProjectsPage() {
   const handleOpen = async (item: SearchHistoryItem) => {
     if (item.status === 'draft') {
       const ok = await resumeDraft(item);
-      if (ok) setLocation(`/universe/${item.id}`);
+      if (ok) setLocation(universePath(String(item.id), item.id));
       return;
     }
     const ok = await loadProject(item);
-    if (ok) setLocation('/dashboard');
+    if (ok) setLocation(dashboardPath(String(item.id), 'map'));
   };
 
   const deleteIds = async (ids: number[]) => {
@@ -123,7 +124,7 @@ export default function ProjectsPage() {
       />
 
       {showProjectsPanel && (
-        <ProjectsPanel onClose={() => setShowProjectsPanel(false)} onProjectLoaded={() => setLocation('/dashboard')} offsetTop={8} />
+        <ProjectsPanel onClose={() => setShowProjectsPanel(false)} offsetTop={8} />
       )}
 
       <div className="flex-1 overflow-y-auto">

@@ -1,4 +1,5 @@
 import { useLocation } from 'wouter';
+import { dashboardPath, universePath } from '@/lib/dashboardView';
 import { FolderOpen, Building2, Clock, ArrowRight, ArrowUpRight } from 'lucide-react';
 import { useSearchHistory, type SearchHistoryItem } from '@/lib/api';
 import { useLoadProject, useResumeDraft } from '@/lib/useLoadProject';
@@ -39,11 +40,11 @@ export function RecentProjects() {
   const open = async (item: SearchHistoryItem) => {
     if (item.status === 'draft') {
       const ok = await resumeDraft(item);
-      if (ok) setLocation(`/universe/${item.id}`);
+      if (ok) setLocation(universePath(String(item.id), item.id));
       return;
     }
     const ok = await loadProject(item);
-    if (ok) setLocation('/dashboard');
+    if (ok) setLocation(dashboardPath(String(item.id), 'map'));
   };
 
   return (

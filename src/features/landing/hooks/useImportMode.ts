@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { toast } from 'sonner';
+import { dashboardPath } from '@/lib/dashboardView';
 import { existingNamesFromHistory, formatProjectName } from '@/lib/projectName';
 import type { SearchHistoryItem } from '@/lib/api';
 import { detectColumnMappings, createEmptyRow } from '../utils';
@@ -85,7 +86,7 @@ export function useImportMode({
       setProject({ id: String(result.searchQueryId), name: result.projectName, search_string: result.projectName, created_at: new Date() });
       loadFromAPI(result.results || [], {}, null, {});
       toast.success(`Imported ${result.recordsImported} records across ${result.companiesCreated} companies`);
-      setLocation('/dashboard');
+      setLocation(dashboardPath(String(result.searchQueryId), 'map'));
     } catch (error: any) {
       toast.dismiss('import');
       toast.error(error.message || 'Import failed');

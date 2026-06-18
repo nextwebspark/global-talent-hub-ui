@@ -3,6 +3,7 @@ import { useLocation, useRoute, Redirect } from 'wouter';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useAppStore } from '@/lib/store';
+import { dashboardPath } from '@/lib/dashboardView';
 import { useResumeDraftById } from '@/lib/useLoadProject';
 import { useSearchStream, type StreamCompany } from '@/features/search/useSearchStream';
 import Sidebar from '@/components/layout/Sidebar';
@@ -11,8 +12,9 @@ import { UniverseResults } from './UniverseResults';
 
 export default function UniversePage() {
   const [, setLocation] = useLocation();
-  const [, params] = useRoute('/universe/:searchQueryId');
-  const routeId = Number(params?.searchQueryId);
+  const [, params] = useRoute('/:projectId/universe/:universeId');
+  const routeProjectId = params?.projectId ?? '';
+  const routeUniverseId = Number(params?.universeId);
 
   const { setProject, loadFromAPI, currentProject } = useAppStore();
   const resumeDraftById = useResumeDraftById();
@@ -36,12 +38,12 @@ export default function UniversePage() {
   // empty while skeletons show) and clobber the live session, breaking "Confirm universe".
   const hydrated = useRef(false);
   useEffect(() => {
-    if (Number.isNaN(routeId) || hydrated.current) return;
+    if (Number.isNaN(routeUniverseId) || hydrated.current) return;
     const { searchQueryId: storeId, searchSessionId } = useAppStore.getState();
-    if (searchSessionId && storeId === routeId) return;
+    if (searchSessionId && storeId === routeUniverseId) return;
     hydrated.current = true;
-    resumeDraftById(routeId);
-  }, [routeId, resumeDraftById]);
+    resumeDraftById(routeUniverseId);
+  }, [routeUniverseId, resumeDraftById]);
 
   // Editing the universe invalidates a prior "saved" state.
   useEffect(() => { setDraftSaved(false); }, [companies]);
@@ -55,7 +57,7 @@ export default function UniversePage() {
   const saveCompaniesToProject = async (companiesToSave: StreamCompany[]) => {
     const { searchSessionId } = useAppStore.getState();
     if (!searchSessionId) throw new Error('Missing session — cannot save project');
-    const draftId = searchQueryId ?? routeId;
+    const draftId = searchQueryId ?? routeUniverseId;
     if (Number.isNaN(draftId)) throw new Error('Missing project — cannot save');
     const res = await fetch('/api/search/add-to-project', {
       method: 'POST',
@@ -83,8 +85,8 @@ export default function UniversePage() {
     if (accepted.length === 0) { toast.error('Select at least one company to save'); return; }
     setIsSavingProject(true);
     try {
-      await saveCompaniesToProject(accepted);
-      setLocation('/dashboard');
+      const data = await saveCompaniesToProject(accepted);
+      setLocation(dashboardPath(String(data.searchQueryId), 'map'));
     } catch (err: any) {
       toast.error(err.message || 'Failed to save project');
     } finally {
@@ -97,8 +99,8 @@ export default function UniversePage() {
     if (nonRejected.length === 0) { reset(); setLocation('/'); return; }
     setIsSavingProject(true);
     try {
-      await saveCompaniesToProject(nonRejected);
-      setLocation('/dashboard');
+      const data = await saveCompaniesToProject(nonRejected);
+      setLocation(dashboardPath(String(data.searchQueryId), 'map'));
     } catch (err: any) {
       toast.error(err.message || 'Failed to navigate');
     } finally {
@@ -107,7 +109,7 @@ export default function UniversePage() {
   };
 
   const handleSaveDraft = async (opts?: { silent?: boolean }) => {
-    const id = searchQueryId ?? routeId;
+    const id = searchQueryId ?? routeUniverseId;
     if (Number.isNaN(id)) return;
     const acceptedCount = companies.filter(c => c.accepted).length;
     const { currentProject } = useAppStore.getState();
@@ -131,7 +133,7 @@ export default function UniversePage() {
     setLocation('/');
   };
 
-  if (Number.isNaN(routeId)) return <Redirect to="/" />;
+  if (!routeProjectId || Number.isNaN(routeUniverseId)) return <Redirect to="/" />;
 
   const acceptedCount = companies.filter(c => c.accepted).length;
   const directCount = companies.filter(c => c.relevanceType === 'Direct' && !c.rejected).length;
@@ -153,7 +155,7 @@ export default function UniversePage() {
       />
 
       {showProjectsPanel && (
-        <ProjectsPanel onClose={() => setShowProjectsPanel(false)} onProjectLoaded={() => setLocation('/dashboard')} offsetTop={8} />
+        <ProjectsPanel onClose={() => setShowProjectsPanel(false)} offsetTop={8} />
       )}
 
       <UniverseResults

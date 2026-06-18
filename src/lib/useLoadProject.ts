@@ -69,7 +69,7 @@ export function useResumeDraft() {
 }
 
 /** Rehydrates a draft into the universe by id alone (no SearchHistoryItem). Used on
- *  refresh / deep-link of /universe/:id, where only the route param is available. */
+ *  refresh / deep-link of /:projectId/universe/:universeId, where only the route params are available. */
 export function useResumeDraftById() {
   const { setSearchCompanies, setSearchSessionId, setSearchQueryId, setSearchPhase, setProject } = useAppStore();
 
@@ -99,41 +99,57 @@ export function useResumeDraftById() {
   };
 }
 
+/** Load a project by id into the store (used on refresh and by useLoadProject). */
+export async function loadProjectById(
+  id: number,
+  opts?: { silent?: boolean },
+): Promise<boolean> {
+  const { setProject, loadFromAPI } = useAppStore.getState();
+  try {
+    if (!opts?.silent) toast.loading('Loading project...', { id: 'load-project' });
+    const response = await fetch(`/api/search-history/${id}/load`);
+    if (!response.ok) throw new Error('Failed to load project');
+    const data = await response.json();
+    if (!opts?.silent) toast.dismiss('load-project');
+
+    setProject({
+      id: String(id),
+      name: data.query || 'Project',
+      search_string: data.query || '',
+      created_at: new Date(),
+      status: data.status,
+      selectedCount: data.selectedCount,
+    });
+
+    const results = data.results || [];
+    loadFromAPI(
+      results,
+      data.satelliteHierarchies || {},
+      data.tableConfig || null,
+      data.mapPositions || {},
+      data.satelliteOrders || {},
+    );
+    if (!opts?.silent) {
+      if (results.length === 0) toast.info('This project has no companies yet.');
+      else toast.success(`Loaded ${results.length} companies`);
+    }
+    return true;
+  } catch {
+    if (!opts?.silent) {
+      toast.dismiss('load-project');
+      toast.error('Failed to load project');
+    }
+    return false;
+  }
+}
+
 /** Loads a project (search query) into the store. Shared by the projects popover,
  *  the full Projects screen, and the Landing recent-projects grid. */
 export function useLoadProject() {
-  const { currentProject, setProject, loadFromAPI } = useAppStore();
+  const { currentProject } = useAppStore();
 
   return async function loadProject(item: SearchHistoryItem): Promise<boolean> {
     if (String(item.id) === currentProject?.id) return true;
-    try {
-      toast.loading('Loading project...', { id: 'load-project' });
-      const response = await fetch(`/api/search-history/${item.id}/load`);
-      if (!response.ok) throw new Error('Failed to load project');
-      const data = await response.json();
-      toast.dismiss('load-project');
-
-      setProject({
-        id: String(item.id),
-        name: item.query,
-        search_string: item.query,
-        created_at: new Date(item.createdAt),
-        status: item.status,
-        selectedCount: item.selectedCount,
-      });
-
-      const results = data.results || [];
-      loadFromAPI(results, data.satelliteHierarchies || {}, data.tableConfig || null, data.mapPositions || {}, data.satelliteOrders || {});
-      if (results.length === 0) {
-        toast.info('This project has no companies yet.');
-      } else {
-        toast.success(`Loaded ${results.length} companies`);
-      }
-      return true;
-    } catch {
-      toast.dismiss('load-project');
-      toast.error('Failed to load project');
-      return false;
-    }
+    return loadProjectById(item.id);
   };
 }

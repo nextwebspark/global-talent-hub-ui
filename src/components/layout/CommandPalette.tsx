@@ -1,6 +1,8 @@
 import { useEffect, useState, useMemo } from 'react';
+import { useLocation } from 'wouter';
 import { Command } from 'cmdk';
 import { useAppStore } from '@/lib/store';
+import { dashboardPath } from '@/lib/dashboardView';
 import { Building2, User, Search, Map, Table2, LayoutDashboard, ArrowRight, Hash } from 'lucide-react';
 
 /** Shared command palette — mounted once at the app root, opened from any screen via
@@ -10,8 +12,9 @@ export default function CommandPalette() {
   const {
     companies, executives, selectCompany, selectExecutive,
     commandPaletteOpen: isOpen, setCommandPaletteOpen,
-    currentProject, setDashboardView,
+    currentProject,
   } = useAppStore();
+  const [, setLocation] = useLocation();
   const onClose = () => setCommandPaletteOpen(false);
   const showNav = !!currentProject;
   const [search, setSearch] = useState('');
@@ -75,9 +78,9 @@ export default function CommandPalette() {
 
               {!search.trim() && showNav && (
                 <Command.Group heading="Navigation" className="px-1 pb-1">
-                  <PaletteItem icon={Map} label="Map View" shortcut="1" onSelect={() => { setDashboardView('map'); onClose(); }} />
-                  <PaletteItem icon={Table2} label="Table View" shortcut="2" onSelect={() => { setDashboardView('table'); onClose(); }} />
-                  <PaletteItem icon={LayoutDashboard} label="Dashboard" shortcut="3" onSelect={() => { setDashboardView('dashboard'); onClose(); }} />
+                  <PaletteItem icon={Map} label="Map View" shortcut="1" onSelect={() => { setLocation(dashboardPath(currentProject!.id, 'map')); onClose(); }} />
+                  <PaletteItem icon={Table2} label="Table View" shortcut="2" onSelect={() => { setLocation(dashboardPath(currentProject!.id, 'table')); onClose(); }} />
+                  <PaletteItem icon={LayoutDashboard} label="Dashboard" shortcut="3" onSelect={() => { setLocation(dashboardPath(currentProject!.id, 'dashboard')); onClose(); }} />
                 </Command.Group>
               )}
 

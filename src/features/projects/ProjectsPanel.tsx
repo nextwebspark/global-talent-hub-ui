@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { useLocation } from 'wouter';
 import ProjectStatusChip from './ProjectStatusChip';
 import { useResumeDraft } from '@/lib/useLoadProject';
+import { dashboardPath, universePath } from '@/lib/dashboardView';
 
 interface ProjectsPanelProps {
   onClose: () => void;
@@ -42,7 +43,7 @@ export default function ProjectsPanel({ onClose, onProjectLoaded, offsetTop = 56
     if (item.status === 'draft') {
       const ok = await resumeDraft(item);
       onClose();
-      if (ok) setLocation(`/universe/${item.id}`);
+      if (ok) setLocation(universePath(String(item.id), item.id));
       return;
     }
 
@@ -69,6 +70,7 @@ export default function ProjectsPanel({ onClose, onProjectLoaded, offsetTop = 56
       }
       onClose();
       onProjectLoaded?.();
+      setLocation(dashboardPath(String(item.id), 'map'));
     } catch {
       toast.dismiss('load-project');
       toast.error('Failed to load project');

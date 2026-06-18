@@ -466,7 +466,8 @@ export const useAppStore = create<AppState>((set) => ({
     set(updates);
   },
 
-  reset: () => set({
+  reset: () => {
+    set({
     currentProject: null,
     companies: [],
     executives: [],
@@ -488,7 +489,8 @@ export const useAppStore = create<AppState>((set) => ({
     satelliteOrders: {},
     tableConfig: null,
     mapPositions: {}
-  })
+    });
+  }
 }));
 
 // Expose store to window in dev/test for Playwright state seeding
