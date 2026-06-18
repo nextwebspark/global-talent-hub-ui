@@ -1,6 +1,8 @@
 import { useCallback, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { toast } from 'sonner';
+import { existingNamesFromHistory, formatProjectName } from '@/lib/projectName';
+import type { SearchHistoryItem } from '@/lib/api';
 import { detectColumnMappings, createEmptyRow } from '../utils';
 import type { ImportPreview, ManualRow } from '../types';
 
@@ -10,10 +12,12 @@ export function useImportMode({
   setProject,
   loadFromAPI,
   setLocation,
+  projectHistory,
 }: {
   setProject: (p: any) => void;
   loadFromAPI: (companies: any[], hierarchies?: any, tableConfig?: any, mapPositions?: any) => void;
   setLocation: (path: string) => void;
+  projectHistory?: SearchHistoryItem[];
 }) {
   const [importTab, setImportTab] = useState<'file' | 'paste' | 'manual'>('file');
   const [isImporting, setIsImporting] = useState(false);
@@ -65,10 +69,12 @@ export function useImportMode({
     try {
       loadFromAPI([], {}, null, {});
       toast.loading('Creating project and importing data...', { id: 'import' });
+      const baseName = projectName.trim() || new Date().toLocaleDateString();
+      const formattedName = formatProjectName(baseName, 'import', existingNamesFromHistory(projectHistory));
       const response = await fetch('/api/import-project', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectName: projectName || `Import ${new Date().toLocaleDateString()}`, records, mappings })
+        body: JSON.stringify({ projectName: formattedName, records, mappings })
       });
       toast.dismiss('import');
       if (!response.ok) {
@@ -86,7 +92,7 @@ export function useImportMode({
     } finally {
       setIsImporting(false);
     }
-  }, [projectName, loadFromAPI, setProject, setLocation]);
+  }, [projectName, projectHistory, loadFromAPI, setProject, setLocation]);
 
   const handleConfirmImport = useCallback(async () => {
     if (!importPreview) return;

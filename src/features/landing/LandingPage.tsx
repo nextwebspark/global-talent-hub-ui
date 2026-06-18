@@ -7,6 +7,7 @@ import Sidebar from '@/components/layout/Sidebar';
 import ProjectsPanel from '@/features/projects/ProjectsPanel';
 import { RecentProjects } from './panels/RecentProjects';
 import { useSearchHistory } from '@/lib/api';
+import { existingNamesFromHistory, formatProjectName } from '@/lib/projectName';
 import { useSearchStream } from '@/features/search/useSearchStream';
 import { ModeSelector } from './ModeSelector';
 import { SearchPanel } from './panels/SearchPanel';
@@ -41,8 +42,8 @@ export default function LandingPage() {
   const { phase, searchQueryId, startSearch, reset } = useSearchStream();
 
   const briefUpload = useBriefUpload(sessionId);
-  const brief = useBriefMode({ upload: briefUpload, sessionId, startSearch });
-  const importState = useImportMode({ setProject, loadFromAPI, setLocation });
+  const brief = useBriefMode({ upload: briefUpload, sessionId, startSearch, projectHistory: history });
+  const importState = useImportMode({ setProject, loadFromAPI, setLocation, projectHistory: history });
 
   // The draft searchQuery row exists once the stream emits `search_created`; hand the
   // live session off to the universe route, where it keeps streaming into the store.
@@ -60,7 +61,8 @@ export default function LandingPage() {
     e.preventDefault();
     if (phase === 'streaming') return; // already searching — block double submit
     if (!input.trim()) { toast.error('Please describe what you are looking for'); return; }
-    startSearch(input.trim(), sessionId);
+    const name = formatProjectName(input.trim(), 'search', existingNamesFromHistory(history));
+    startSearch(input.trim(), sessionId, name);
   };
 
   const handleSelectMode = (m: LandingMode) => {
