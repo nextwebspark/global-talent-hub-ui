@@ -7,6 +7,7 @@ import Sidebar from '@/components/layout/Sidebar';
 import ProjectsPanel from '@/features/projects/ProjectsPanel';
 import { RecentProjects } from './panels/RecentProjects';
 import { useSearchHistory } from '@/lib/api';
+import { dashboardPath, universePath } from '@/lib/dashboardView';
 import { existingNamesFromHistory, formatProjectName } from '@/lib/projectName';
 import { useSearchStream } from '@/features/search/useSearchStream';
 import { ModeSelector } from './ModeSelector';
@@ -16,7 +17,7 @@ import { ImportPanel } from './panels/ImportPanel';
 import { useBriefUpload } from './hooks/useBriefUpload';
 import { useBriefMode } from './hooks/useBriefMode';
 import { useImportMode } from './hooks/useImportMode';
-import { SAMPLE_RETAIL_COMPANIES } from '@/features/landing/fixtures/sampleData';
+import { seedDemoProject } from '@/lib/demoProject';
 import { Globe, Menu } from 'lucide-react';
 import type { LandingMode } from './types';
 
@@ -48,7 +49,9 @@ export default function LandingPage() {
   // The draft searchQuery row exists once the stream emits `search_created`; hand the
   // live session off to the universe route, where it keeps streaming into the store.
   useEffect(() => {
-    if (phase === 'streaming' && searchQueryId) setLocation(`/universe/${searchQueryId}`);
+    if (phase === 'streaming' && searchQueryId) {
+      setLocation(universePath(String(searchQueryId), searchQueryId));
+    }
   }, [phase, searchQueryId, setLocation]);
 
   const toggleTheme = () => {
@@ -71,9 +74,8 @@ export default function LandingPage() {
   };
 
   const handleViewSampleGlobe = () => {
-    setProject({ id: 'demo', name: 'Sample Retail Globe', search_string: 'Global retail companies', created_at: new Date() });
-    loadFromAPI(SAMPLE_RETAIL_COMPANIES, {}, null, {});
-    setLocation('/dashboard');
+    seedDemoProject();
+    setLocation(dashboardPath('demo', 'map'));
   };
 
   return (
@@ -92,7 +94,7 @@ export default function LandingPage() {
       />
 
       {showProjectsPanel && (
-        <ProjectsPanel onClose={() => setShowProjectsPanel(false)} onProjectLoaded={() => setLocation('/dashboard')} offsetTop={8} />
+        <ProjectsPanel onClose={() => setShowProjectsPanel(false)} offsetTop={8} />
       )}
 
       <motion.div

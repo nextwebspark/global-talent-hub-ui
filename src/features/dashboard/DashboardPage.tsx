@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAppStore } from '@/lib/store';
+import { loadProjectById } from '@/lib/useLoadProject';
+import { DEMO_PROJECT_ID, seedDemoProject } from '@/lib/demoProject';
 import { useDashboardKeyboard } from '@/features/dashboard/hooks/useDashboardKeyboard';
+import { useDashboardView } from '@/features/dashboard/hooks/useDashboardView';
 import { useRightPanelResize } from '@/features/dashboard/hooks/useRightPanelResize';
 import { useDashboardProjectPersist } from '@/features/dashboard/hooks/useDashboardProjectPersist';
 import { useCompanies, useLoadSearchResults, useEnrichmentMatch, EnrichmentMatchResult } from '@/lib/api';
@@ -16,7 +19,7 @@ import ImportModal from '@/features/dashboard/components/ImportModal';
 import ProjectsPanel from '@/features/projects/ProjectsPanel';
 import MatchReviewPanel from '@/features/dashboard/panels/MatchReviewPanel';
 import ClockworkProjectSelector from '@/features/dashboard/panels/ClockworkProjectSelector';
-import { useLocation } from 'wouter';
+import { useLocation, useRoute } from 'wouter';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
@@ -25,7 +28,10 @@ import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 
 export default function DashboardPage() {
   const [, setLocation] = useLocation();
-  const { currentProject, setProject, selectedCompanyId, selectedExecutiveId, companies, executives, selectCompany, selectExecutive, setCompanies, setExecutives, loadFromAPI, dashboardView: activeView, setDashboardView, setCommandPaletteOpen } = useAppStore();
+  const [, params] = useRoute('/:projectId/dashboard');
+  const routeProjectId = params?.projectId ?? '';
+  const { currentProject, setProject, selectedCompanyId, selectedExecutiveId, companies, executives, selectCompany, selectExecutive, setCompanies, setExecutives, loadFromAPI, setCommandPaletteOpen } = useAppStore();
+  const { activeView, setActiveView: navigateView } = useDashboardView(routeProjectId);
   const { isLoading, refetch: refetchCompanies } = useCompanies();
   const loadSearchResults = useLoadSearchResults();
 
@@ -42,26 +48,59 @@ export default function DashboardPage() {
   const [matchReviewData, setMatchReviewData] = useState<EnrichmentMatchResult | null>(null);
   const [showProjectSelector, setShowProjectSelector] = useState(false);
   const enrichmentMatch = useEnrichmentMatch();
+  // Project restore: lazy init avoids a flash when store already matches the URL;
+  // the effect below loads/refreshes when routeProjectId !== currentProject.id;
+  // the render guard shows a spinner while restoringProject && !currentProject.
+  const [restoringProject, setRestoringProject] = useState(() => {
+    const storeId = useAppStore.getState().currentProject?.id;
+    return !routeProjectId || storeId !== routeProjectId;
+  });
 
   const setActiveView = useCallback((view: ViewMode) => {
     if (view !== 'map') {
       selectCompany(null);
       selectExecutive(null);
     }
-    setDashboardView(view);
-  }, [selectCompany, selectExecutive, setDashboardView]);
+    navigateView(view);
+  }, [selectCompany, selectExecutive, navigateView]);
 
   useDashboardKeyboard(setActiveView);
   useDashboardProjectPersist();
 
   useEffect(() => {
-    // Allow Playwright to pre-seed state via window.__E2E_SEED__ in DEV
-    if (!currentProject && import.meta.env.DEV && (window as any).__E2E_SEED__?.currentProject) {
-      useAppStore.setState((window as any).__E2E_SEED__);
+    if (!routeProjectId) {
+      setRestoringProject(false);
+      setLocation('/projects');
       return;
     }
-    if (!currentProject) setLocation('/');
-  }, [currentProject, setLocation]);
+
+    // Allow Playwright to pre-seed state via window.__E2E_SEED__ in DEV
+    if (import.meta.env.DEV && (window as any).__E2E_SEED__?.currentProject) {
+      useAppStore.setState((window as any).__E2E_SEED__);
+      setRestoringProject(false);
+      return;
+    }
+
+    if (currentProject?.id === routeProjectId) {
+      setRestoringProject(false);
+      return;
+    }
+
+    if (routeProjectId === DEMO_PROJECT_ID) {
+      seedDemoProject();
+      setRestoringProject(false);
+      return;
+    }
+
+    let cancelled = false;
+    setRestoringProject(true);
+    loadProjectById(Number(routeProjectId), { silent: true }).then((ok) => {
+      if (cancelled) return;
+      setRestoringProject(false);
+      if (!ok) setLocation('/projects');
+    });
+    return () => { cancelled = true; };
+  }, [routeProjectId, currentProject?.id, setLocation]);
 
   const tableData = useMemo(() => {
     const data: any[] = [];
@@ -218,7 +257,19 @@ export default function DashboardPage() {
     }
   };
 
-  if (!currentProject) return null;
+  if (!currentProject) {
+    if (restoringProject) {
+      return (
+        <div className="flex h-screen w-screen items-center justify-center bg-background">
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">Loading project...</p>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  }
 
   if (isLoading) {
     return (
