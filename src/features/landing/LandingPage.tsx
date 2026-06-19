@@ -17,7 +17,7 @@ import { ImportPanel } from './panels/ImportPanel';
 import { useBriefUpload } from './hooks/useBriefUpload';
 import { useBriefMode } from './hooks/useBriefMode';
 import { useImportMode } from './hooks/useImportMode';
-import { SAMPLE_RETAIL_COMPANIES } from '@/features/landing/fixtures/sampleData';
+import { seedDemoProject } from '@/lib/demoProject';
 import { Globe, Menu } from 'lucide-react';
 import type { LandingMode } from './types';
 
@@ -74,8 +74,7 @@ export default function LandingPage() {
   };
 
   const handleViewSampleGlobe = () => {
-    setProject({ id: 'demo', name: 'Sample Retail Globe', search_string: 'Global retail companies', created_at: new Date() });
-    loadFromAPI(SAMPLE_RETAIL_COMPANIES, {}, null, {});
+    seedDemoProject();
     setLocation(dashboardPath('demo', 'map'));
   };
 

@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAppStore } from '@/lib/store';
 import { loadProjectById } from '@/lib/useLoadProject';
+import { DEMO_PROJECT_ID, seedDemoProject } from '@/lib/demoProject';
 import { useDashboardKeyboard } from '@/features/dashboard/hooks/useDashboardKeyboard';
 import { useDashboardView } from '@/features/dashboard/hooks/useDashboardView';
 import { useRightPanelResize } from '@/features/dashboard/hooks/useRightPanelResize';
 import { useDashboardProjectPersist } from '@/features/dashboard/hooks/useDashboardProjectPersist';
 import { useCompanies, useLoadSearchResults, useEnrichmentMatch, EnrichmentMatchResult } from '@/lib/api';
 import { transformAPICompany, transformAPIExecutive } from '@/lib/store';
-import { SAMPLE_RETAIL_COMPANIES } from '@/features/landing/fixtures/sampleData';
 import Sidebar, { type ViewMode } from '@/components/layout/Sidebar';
 import TopBar from '@/components/layout/TopBar';
 import CompanyList from '@/features/dashboard/components/CompanyList';
@@ -48,6 +48,9 @@ export default function DashboardPage() {
   const [matchReviewData, setMatchReviewData] = useState<EnrichmentMatchResult | null>(null);
   const [showProjectSelector, setShowProjectSelector] = useState(false);
   const enrichmentMatch = useEnrichmentMatch();
+  // Project restore: lazy init avoids a flash when store already matches the URL;
+  // the effect below loads/refreshes when routeProjectId !== currentProject.id;
+  // the render guard shows a spinner while restoringProject && !currentProject.
   const [restoringProject, setRestoringProject] = useState(() => {
     const storeId = useAppStore.getState().currentProject?.id;
     return !routeProjectId || storeId !== routeProjectId;
@@ -83,14 +86,8 @@ export default function DashboardPage() {
       return;
     }
 
-    if (routeProjectId === 'demo') {
-      setProject({
-        id: 'demo',
-        name: 'Sample Retail Globe',
-        search_string: 'Global retail companies',
-        created_at: new Date(),
-      });
-      loadFromAPI(SAMPLE_RETAIL_COMPANIES, {}, null, {});
+    if (routeProjectId === DEMO_PROJECT_ID) {
+      seedDemoProject();
       setRestoringProject(false);
       return;
     }
@@ -103,7 +100,7 @@ export default function DashboardPage() {
       if (!ok) setLocation('/projects');
     });
     return () => { cancelled = true; };
-  }, [routeProjectId, currentProject?.id, setLocation, setProject, loadFromAPI]);
+  }, [routeProjectId, currentProject?.id, setLocation]);
 
   const tableData = useMemo(() => {
     const data: any[] = [];

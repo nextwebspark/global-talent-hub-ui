@@ -94,11 +94,9 @@ async function persistCompanyDelete(id: string): Promise<void> {
 }
 
 interface AppState extends SearchSessionState, SearchSessionActions {
-  // Global UI: command palette (shared across all screens) + dashboard active view
+  // Global UI: command palette (shared across all screens)
   commandPaletteOpen: boolean;
   setCommandPaletteOpen: (open: boolean) => void;
-  dashboardView: 'map' | 'table' | 'dashboard';
-  setDashboardView: (view: 'map' | 'table' | 'dashboard') => void;
 
   currentProject: Project | null;
   companies: Company[];
@@ -285,8 +283,6 @@ export const useAppStore = create<AppState>((set) => ({
   // ─── Global UI ──────────────────────────────────────────────────────────────
   commandPaletteOpen: false,
   setCommandPaletteOpen: (open) => set({ commandPaletteOpen: open }),
-  dashboardView: 'map',
-  setDashboardView: (view) => set({ dashboardView: view }),
 
   // ─── Legacy State ───────────────────────────────────────────────────────────
   currentProject: null,

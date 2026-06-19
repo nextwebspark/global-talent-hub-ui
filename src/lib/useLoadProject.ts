@@ -99,7 +99,8 @@ export function useResumeDraftById() {
   };
 }
 
-/** Load a project by id into the store (used on refresh and by useLoadProject). */
+/** Load a project by id into the store (used on refresh and by useLoadProject).
+ *  GET /api/search-history/:id/load returns top-level `query` (same field as list items). */
 export async function loadProjectById(
   id: number,
   opts?: { silent?: boolean },

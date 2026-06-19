@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { useLocation, useRoute, Redirect } from 'wouter';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -54,6 +54,9 @@ export default function UniversePage() {
     document.documentElement.classList.toggle('dark', next);
   };
 
+  const acceptedCompanies = useMemo(() => companies.filter(c => c.accepted), [companies]);
+  const acceptedCount = acceptedCompanies.length;
+
   const saveCompaniesToProject = async (companiesToSave: StreamCompany[]) => {
     const { searchSessionId } = useAppStore.getState();
     if (!searchSessionId) throw new Error('Missing session — cannot save project');
@@ -86,14 +89,11 @@ export default function UniversePage() {
     return data;
   };
 
-  const acceptedCompanies = () => useAppStore.getState().searchCompanies.filter(c => c.accepted);
-
   const handleSaveProject = async () => {
-    const accepted = acceptedCompanies();
-    if (accepted.length === 0) { toast.error('Select at least one company to save'); return; }
+    if (acceptedCompanies.length === 0) { toast.error('Select at least one company to save'); return; }
     setIsSavingProject(true);
     try {
-      const data = await saveCompaniesToProject(accepted);
+      const data = await saveCompaniesToProject(acceptedCompanies);
       setLocation(dashboardPath(String(data.searchQueryId), 'map'));
     } catch (err: any) {
       toast.error(err.message || 'Failed to save project');
@@ -103,11 +103,10 @@ export default function UniversePage() {
   };
 
   const handleGoToDashboard = async () => {
-    const accepted = acceptedCompanies();
-    if (accepted.length === 0) { reset(); setLocation('/'); return; }
+    if (acceptedCompanies.length === 0) { reset(); setLocation('/'); return; }
     setIsSavingProject(true);
     try {
-      const data = await saveCompaniesToProject(accepted);
+      const data = await saveCompaniesToProject(acceptedCompanies);
       setLocation(dashboardPath(String(data.searchQueryId), 'map'));
     } catch (err: any) {
       toast.error(err.message || 'Failed to navigate');
@@ -119,7 +118,6 @@ export default function UniversePage() {
   const handleSaveDraft = async (opts?: { silent?: boolean }) => {
     const id = searchQueryId ?? routeUniverseId;
     if (Number.isNaN(id)) return;
-    const acceptedCount = companies.filter(c => c.accepted).length;
     const { currentProject } = useAppStore.getState();
     try {
       const res = await fetch(`/api/search-queries/${id}/draft`, {
@@ -143,7 +141,6 @@ export default function UniversePage() {
 
   if (!routeProjectId || Number.isNaN(routeUniverseId)) return <Redirect to="/" />;
 
-  const acceptedCount = companies.filter(c => c.accepted).length;
   const directCount = companies.filter(c => c.relevanceType === 'Direct' && !c.rejected).length;
   const adjacentCount = companies.filter(c => (c.relevanceType === 'Adjacent' || c.relevanceType === 'AI Inferred') && !c.rejected).length;
 
